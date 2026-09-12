@@ -1,0 +1,209 @@
+#include <stdio.h>
+#include <string.h>
+#include <ctype.h>
+#define MAX_TOKENS 100
+#define MAX_LEN 50
+struct Token {
+    char text[MAX_LEN];
+    char type[20];
+};
+int isDelimiter(char ch) {
+    return ch == ' ' || ch == '\t' || ch == '\n' ||
+           ch == '(' || ch == ')' || ch == ';';
+}
+void identifyToken(struct Token *token) {
+    if (strcmp(token->text, "if") == 0 ||
+        strcmp(token->text, "else") == 0 ||
+        strcmp(token->text, "while") == 0) {
+        strcpy(token->type, "KEYWORD");
+    }
+    else if (isdigit(token->text[0])) {
+        strcpy(token->type, "NUMBER");
+    }
+    else if (strcmp(token->text, "=") == 0 ||
+             strcmp(token->text, "+") == 0 ||
+             strcmp(token->text, "-") == 0 ||
+             strcmp(token->text, "*") == 0 ||
+             strcmp(token->text, "/") == 0) {
+        strcpy(token->type, "OPERATOR");
+    }
+    else if (strcmp(token->text, "(") == 0 ||
+             strcmp(token->text, ")") == 0 ||
+             strcmp(token->text, ";") == 0) {
+        strcpy(token->type, "DELIMITER");
+    }
+    else {
+        strcpy(token->type, "IDENTIFIER");
+    }
+}
+int tokenize(char input[], struct Token tokens[]) {
+    int i = 0;
+    int count = 0;
+    char temp[MAX_LEN];
+    while (input[i] != '\0') {
+      
+        if (isspace(input[i])) {
+            i++;
+            continue;
+        }
+        if (input[i] == '(' || input[i] == ')' || input[i] == ';') {
+            tokens[count].text[0] = input[i];
+            tokens[count].text[1] = '\0';
+
+            identifyToken(&tokens[count]);
+            count++;
+            i++;
+            continue;
+        }
+        if (input[i] == '=' || input[i] == '+' ||
+            input[i] == '-' || input[i] == '*' ||
+            input[i] == '/') {
+
+            tokens[count].text[0] = input[i];
+            tokens[count].text[1] = '\0';
+
+            identifyToken(&tokens[count]);
+            count++;
+            i++;
+            continue;
+        }
+
+        int j = 0;
+
+        while (input[i] != '\0' &&
+               !isDelimiter(input[i]) &&
+               input[i] != '=' &&
+               input[i] != '+' &&
+               input[i] != '-' &&
+               input[i] != '*' &&
+               input[i] != '/') {
+
+            temp[j++] = input[i++];
+        }
+
+        temp[j] = '\0';
+
+        strcpy(tokens[count].text, temp);
+        identifyToken(&tokens[count]);
+        count++;
+    }
+
+    return count;
+}
+
+void displayTokens(struct Token tokens[], int count) {
+    printf("\n--- TOKEN STREAM ---\n");
+
+    for (int i = 0; i < count; i++) {
+        printf("Token %d: %-10s Type: %s\n",
+               i + 1,
+               tokens[i].text,
+               tokens[i].type);
+    }
+}
+
+int validateTokens(struct Token tokens[], int count) {
+    if (count == 0) {
+        printf("\nEmpty command detected.\n");
+        return 0;
+    }
+
+    for (int i = 0; i < count; i++) {
+
+        if (strcmp(tokens[i].type, "IDENTIFIER") == 0) {
+            if (tokens[i].text[0] >= '0' &&
+                tokens[i].text[0] <= '9') {
+                printf("Invalid identifier: %s\n",
+                       tokens[i].text);
+                return 0;
+            }
+        }
+    }
+
+    printf("\nToken stream is valid.\n");
+    return 1;
+}
+
+void parse(struct Token tokens[], int count) {
+
+    printf("\n--- PARSE TREE ---\n");
+
+    if (count < 3) {
+        printf("Syntax Error: incomplete command.\n");
+        return;
+    }
+
+    if (strcmp(tokens[0].type, "IDENTIFIER") == 0 &&
+        strcmp(tokens[1].text, "=") == 0) {
+
+        printf("Assignment\n");
+        printf("|-- Identifier: %s\n", tokens[0].text);
+        printf("|-- Operator: =\n");
+        printf("|-- Value: %s\n", tokens[2].text);
+
+        printf("\nSyntax is valid.\n");
+
+        printf("\n--- EXECUTION STRUCTURE ---\n");
+        printf("Operation : ASSIGN\n");
+        printf("Variable  : %s\n", tokens[0].text);
+        printf("Value     : %s\n", tokens[2].text);
+
+        return;
+    }
+
+    if (strcmp(tokens[0].text, "if") == 0) {
+
+        if (count >= 4 &&
+            strcmp(tokens[1].text, "(") == 0) {
+
+            printf("IF\n");
+            printf("|-- Condition\n");
+            printf("    |-- %s\n", tokens[2].text);
+
+            if (strcmp(tokens[3].text, ")") == 0) {
+                printf("\nSyntax is valid.\n");
+
+                printf("\n--- EXECUTION STRUCTURE ---\n");
+                printf("Operation : IF\n");
+                printf("Condition : %s\n", tokens[2].text);
+            }
+            else {
+                printf("\nSyntax Error: missing ')'.\n");
+            }
+        }
+        else {
+            printf("\nSyntax Error: expected '('.\n");
+        }
+
+        return;
+    }
+
+    printf("\nSyntax Error: unknown command or invalid syntax.\n");
+}
+
+int main() {
+
+    char input[500];
+    struct Token tokens[MAX_TOKENS];
+
+    printf("Enter a command: ");
+    fgets(input, sizeof(input), stdin);
+
+    input[strcspn(input, "\n")] = '\0';
+
+    if (strlen(input) == 0) {
+        printf("\nEmpty command detected.\n");
+        return 0;
+    }
+
+    int count = tokenize(input, tokens);
+
+    displayTokens(tokens, count);
+
+    if (validateTokens(tokens, count)) {
+
+        parse(tokens, count);
+    }
+
+    return 0;
+}
